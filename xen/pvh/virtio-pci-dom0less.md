@@ -431,7 +431,7 @@ and provide emulation of the virtio PCI controller.
 
 ```bash
 $ qemu-system-aarch64 \
-    -M xenpvh,pci-ecam-base=0x11000000000,pci-ecam-size=0x10000000,pci-mmio-base=0x11010000000,pci-mmio-size=0x2000000,pci-mmio-high-base=0x10000000000,pci-mmio-high-size=0x1000000000 \
+    -M xenpvh,pci-ecam-base=0x11000000000,pci-ecam-size=0x10000000,pci-mmio-base=0x11010000000,pci-mmio-size=0x2000000,pci-mmio-high-base=0x10000000000,pci-mmio-high-size=0x1000000000,pci-intx-irq-base=44 \
     -xen-domid 1 \
     -xen-attach \
     -no-shutdown \
