@@ -431,7 +431,7 @@ and provide emulation of the virtio PCI controller.
 
 ```bash
 $ qemu-system-aarch64 \
-    -M xenpvh,pci-ecam-base=0x11000000000,pci-ecam-size=0x10000000,pci-mmio-base=0x11010000000,pci-mmio-size=0x2000000,pci-mmio-high-base=0x10000000000,pci-mmio-high-size=0x1000000000,pci-intx-irq-base=44 \
+    -M xenpvh,pci-ecam-base=0xf100000000,pci-ecam-size=0x10000000,pci-mmio-base=0xf110000000,pci-mmio-size=0x2000000,pci-mmio-high-base=0xf000000000,pci-mmio-high-size=0x100000000,pci-intx-irq-base=44 \
     -xen-domid 1 \
     -xen-attach \
     -no-shutdown \
@@ -445,22 +445,20 @@ $ qemu-system-aarch64 \
 Now, in domU, trig a PCI rescan:
 ```console
 $ echo 1 >/sys/bus/pci/rescan 
-(d1) [  516.604517] pci 0001:00:00.0: [1b36:0008] type 00 class 0x060000 conventional PCI endpoint
-(d1) [  516.703719] pci 0001:00:01.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint
-(d1) [  516.738427] pci 0001:00:01.0: BAR 0 [io  0x0000-0x001f]
-(d1) [  516.768665] pci 0001:00:01.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]
-(d1) [  516.861555] pci 0001:00:01.0: BAR 4 [mem 0x10012000000-0x10012003fff 64bit pref]: assigned
-(d1) [  516.881550] pci 0001:00:01.0: BAR 0 [io  size 0x0020]: can't assign; no space
-(d1) [  516.883016] pci 0001:00:01.0: BAR 0 [io  size 0x0020]: failed to assign
-(d1) [  516.887370] OF: /pcie@10000000000: no iommu-map translation for id 0x8 on (null)
-(d1) [  516.900937] virtio-pci 0001:00:01.0: enabling device (0000 -> 0002)
+(d1) [   25.758098] pci 0001:00:00.0: [1b36:0008] type 00 class 0x060000 conventional PCI endpoint
+(d1) [   25.816749] pci 0001:00:01.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint
+(d1) [   25.833181] pci 0001:00:01.0: BAR 0 [io  0x0000-0x001f]
+(d1) [   25.848545] pci 0001:00:01.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]
+(d1) [   25.932246] pci 0001:00:01.0: BAR 4 [mem 0xf000000000-0xf000003fff 64bit pref]: assigned
+(d1) [   25.949152] pci 0001:00:01.0: BAR 0 [io  size 0x0020]: can't assign; no space
+(d1) [   25.951101] pci 0001:00:01.0: BAR 0 [io  size 0x0020]: failed to assign
+(d1) [   25.961496] virtio-pci 0001:00:01.0: enabling device (0000 -> 0002)
 ```
 
 lspci should now show the virtio-net device.
 ```console
 $ lspci -v
-
-0001:00:00.0 Host bridge: Red Hat, Inc. QEMU PCIe Host bridge
+(XEN) 0001:00:00.0 Host bridge: Red Hat, Inc. QEMU PCIe Host bridge
 (XEN)   Subsystem: Red Hat, Inc. Device 1100
 (XEN)   Flags: fast devsel
 (XEN) lspci: Unable to load libkmod resources: error -2
@@ -468,7 +466,7 @@ $ lspci -v
 (XEN) 0001:00:01.0 Ethernet controller: Red Hat, Inc. Virtio network device
 (XEN)   Subsystem: Red Hat, Inc. Device 0001
 (XEN)   Flags: bus master, fast devsel, latency 0, IRQ 13
-(XEN)   Memory at 10012000000 (64-bit, prefetchable) [size=16K]
+(XEN)   Memory at f000000000 (64-bit, prefetchable) [size=16K]
 (XEN)   Capabilities: [84] Vendor Specific Information: VirtIO: <unknown>
 (XEN)   Capabilities: [70] Vendor Specific Information: VirtIO: Notify
 (XEN)   Capabilities: [60] Vendor Specific Information: VirtIO: DeviceCfg
