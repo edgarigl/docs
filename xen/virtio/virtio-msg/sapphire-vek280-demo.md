@@ -20,14 +20,15 @@ The package contains the following files:
 ```console
 load.tcl
 images-vek280/
-images-vek280/xen-image-minimal-qemuarm64.rootfs.cpio.gz.u-boot
+images-vek280/versal-virtio-msg-demo-image-versal-generic.rootfs.cpio.gz.u-boot
 images-vek280/BOOT.BIN
-images-vek280/system.dtb
+images-vek280/xen.dtb
 images-vek280/boot.scr
 images-vek280/boot.script
 images-vek280/design_1_wrapper.xsa
 images-vek280/Image
 images-vek280/kernelconfig
+images-vek280/xen-versal-generic
 images-sapphire/
 images-sapphire/xen-image-minimal-qemux86-64.rootfs.cpio.gz
 images-sapphire/bzImage
@@ -126,7 +127,7 @@ xsdb%
 ```
 
 You should see the Versal Linux/dom0/Xen system booting on the Versal UART.
-Login as root (no password) and we'll run the pci-flr-monitor.sh script.
+Login as root (no password) and we'll run the run-versal-virtio-msg-net-backend.sh script.
 ```console
 Starting syslogd/klogd: done
 Starting domain watchdog daemon: xenwatchdogd startup
@@ -135,8 +136,12 @@ Starting domain watchdog daemon: xenwatchdogd startup
 Yocto on Xen development distro 2024.02.10 qemuarm64 /dev/ttyAMA0
 
 qemuarm64 login: root
-root@qemuarm64:~# cd /usr/share/virtio-msg-demo/
-root@qemuarm64:/usr/share/virtio-msg-demo# ./pci-flr-monitor.sh >/dev/null 
+root@qemuarm64:~# run-versal-virtio-msg-net-backend.sh
++ qemu-system-aarch64 -M x-virtio-msg -m 2G -serial null -display none -daemonize -device virtio-msg-bus-vek280-hexcam,dev=/dev/uio0,spsc-base=0xa210000 -device virtio-net-device,mq=on,netdev=net0,iommu_platform=on -netdev tap,id=net0,ifname=tap0,script=no,downscript=no
+[  227.843873] tun: Universal TUN/TAP device driver, 1.6
+ftruncate: Invalid argument
+host=0xfff72ad0a000
+Wait for queue
 ```
 
 Now we're ready to start the Sapphire system.
@@ -175,46 +180,6 @@ root@qemux86-64:/usr/share/virtio-msg-demo# ./run-x86.sh
 [   92.200770] sapphire_probe: shmem=000000004f4d65bc a210000
 [   92.200783] virtio_msg_sapphire 0000:01:00.0: SHMEM @ 0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
 00 00 00 00 00 00 00 00 00 
-```
-
-At this point, the x86 kernel is waiting for the virtio-msg backend to respond.
-On the VEK 280 Versal UART, we're now going to start the backend.
-
-```console
-root@qemuarm64:~# cd /usr/share/virtio-msg-demo/
-root@qemuarm64:/usr/share/virtio-msg-demo# ./run-arm64.sh 
-+ insmod /usr/share/virtio-msg-demo/uio_xilinx_versal_virtio_msg.ko
-[  280.612712] uio_dmem_genirq_probe:174
-[  280.616410] uio_dmem_genirq_probe:188
-[  280.620080] uio_dmem_genirq_probe:194
-[  280.623742] uio_dmem_genirq_probe:201
-[  280.627405] uio_dmem_genirq_probe:208
-[  280.631067] uio_dmem_genirq_probe:215
-[  280.634729] uio_dmem_genirq_probe:221
-[  280.638468] uio_dmem_genirq_probe:232
-[  280.642137] uio_dmem_genirq_probe:250
-[  280.645797] uio_dmem_genirq_probe:253
-[  280.649453] uio_dmem_genirq_probe: addr 0x4a000000000 size 860000000
-[  280.655808] uio_dmem_genirq_probe:275
-[  280.659477] uio_dmem_genirq_probe:290
-[  280.663148] uio_dmem_genirq_probe:304
-[  280.666810] uio_dmem_genirq_probe:309
-+ /usr/share/virtio-msg-demo/qemu-system-aarch64 -M x-virtio-msg -m 2G -serial null -display none -daemonize -device virtio-msg-bus-vek280-hexcam,dev=/dev/uio0,spsc-base=0xa210000 -device virtio-net-device,mq=on,netdev=net0,iommu_platform=on -netdev tap,id=net0,ifname=tap0,script=no,downscript=no
-[  280.720771] qemu-system-aar[2375]: memfd_create() called without MFD_EXEC or MFD_NOEXEC_SEAL set
-ftruncate: Invalid argument
-host=0xfff70ddb6000
-virtio_set_status: val 0
-virtio_set_status: val 0
-+ sleep 2
-+ echo 'iface tap0 inet dhcp'
-+ ifup tap0
-udhcpc: started, v1.36.1
-udhcpc: broadcasting discover
-udhcpc: broadcasting discover
-udhcpc: broadcasting select for 10.0.6.114, server 10.0.6.1
-udhcpc: lease of 10.0.6.114 obtained from 10.0.6.1, lease time 43200
-ip: RTNETLINK answers: File exists
-/etc/udhcpc.d/50default: Adding DNS 10.0.6.1
 ```
 
 Now should have IP addresses on Versal's tap0 interface and a different IP address on Sapphire Linux eth3 interface.
