@@ -42,4 +42,34 @@ $ cp pl.dtsi ./components/plnx_workspace/device-tree/device-tree/pl.dtsi
 $ petalinux-build
 ```
 
+7. Build BOOT.BIN
+
+```console
+$ petalinux-package boot --u-boot --force
+[INFO] Getting Default pdi file
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/project-spec/hw-description/design_1_wrapper.pdi"
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/images/linux/plm.elf"
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/images/linux/psmfw.elf"
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/images/linux/system.dtb"
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/images/linux/bl31.elf"
+[INFO] File in BOOT BIN: "/home/edgar/pl/vek280/images/linux/u-boot.elf"
+[INFO] Generating versal binary package BOOT.BIN...
+[INFO] 
+
+****** Bootgen v2024.1
+  **** Build date : Apr 29 2024-12:18:25
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
+
+
+[INFO]   : Bootimage generated successfully
+
+
+[INFO] Generating QEMU boot images...
+[INFO] File in qemu_boot.img: /home/edgar/pl/vek280/images/linux/BOOT.BIN
+[INFO] File in qemu_boot.img: /home/edgar/pl/vek280/images/linux/boot.scr
+[INFO] File in qemu_boot.img: /home/edgar/pl/vek280/images/linux/ramdisk.cpio.gz.u-boot
+[INFO] Binary is ready.
+[INFO] Successfully Generated BIN File
+```
 
