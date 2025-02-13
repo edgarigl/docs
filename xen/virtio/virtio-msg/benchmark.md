@@ -26,7 +26,7 @@ Connecting to host 10.0.6.238, port 5201
 iperf Done.
 ```
 
-Generic 32bit word memcpy from TBM:
+Custom build with Generic 32bit word memcpy from TBM:
 ```console
 # iperf3 -c 10.0.6.238 -bidir
 Connecting to host 10.0.6.238, port 5201
