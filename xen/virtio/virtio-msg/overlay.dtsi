@@ -25,7 +25,8 @@
                 #size-cells = <2>;
 
                 xen,xen-bootargs = "console=dtuart dtuart=serial0 dom0_mem=5G dom0_max_vcpus=2 bootscrub=0 vwfi=native sched=null";
-                xen,dom0-bootargs = "rdinit=/sbin/init earlyprintk=serial,ttyAMA0 console=hvc0 earlycon=xenboot";
+//                xen,dom0-bootargs = "rdinit=init earlyprintk=serial,ttyAMA0 console=hvc0 earlycon=xenboot";
+                xen,dom0-bootargs = "rootdelay=2 root=/dev/mmcblk0p2 console=hvc0 earlycon=xenboot clk_ignore_unused";
 
                 module@0 {
                         compatible = "xen,linux-zimage", "multiboot,module";
