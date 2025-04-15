@@ -66,6 +66,7 @@ ${QEMU} -M xenpvh \
 
 ## Running on x86 xl
 
+x86 hyperlaunch flows do not yet have support for configuring non-blocking virtio-mmio.
 The edgar/vmp branch has a hack that statically creates a single non-blocking
 virtio-mmio device for x86 pvh guests.
 
