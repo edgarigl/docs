@@ -34,11 +34,9 @@ CONFIG_VIRTIO_MSG_BUS_XEN=y
 Add the following fdt property to your dom0less domU description to
 instantiate 3 virtio-mmio-nonblocking nodes:
 ```
-       virtio-mmio-non-blocking = <
-                                   0x0 0x2000000 0x0 0x39004000 0 33 0x0
-                                   0x0 0x2001000 0x0 0x39005000 0 34 0x0
-                                   0x0 0x2002000 0x0 0x39006000 0 35 0x1
-                                   >;
+    virtio-msg-bus-xen = < 0 0 >; /* 2 busses with backends in dom0.  */
+    virtio-mmio-non-blocking = < 0x0 0x2000000 33 0    /* fmaps */
+                                 0x0 0x2001000 34 1 >; /* grants */
 ```
 
 During boot, domU will get stuck at boot spinning waiting for virtio-mmio
