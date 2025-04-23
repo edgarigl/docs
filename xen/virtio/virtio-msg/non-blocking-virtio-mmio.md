@@ -8,7 +8,7 @@ To try it out, you'll need to use the following branches of QEMU, Linux
 and Xen:
 
 QEMU:
-https://github.com/edgarigl/qemu/tree/edgar/virtio-msg
+https://github.com/edgarigl/qemu/tree/edgar/vmp
 
 Linux:
 https://github.com/edgarigl/linux/tree/edgar/virtio-indirect
