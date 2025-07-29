@@ -24,8 +24,11 @@ I build my images with Yocto. I've published my personal Yocto setup (Yoxen) on 
 
 When booting dom0lessly, dom0 and domU will race towards finishing the boot.
 At some point domU will try to scan the Virtio PCI bus and there won't be
-anything there. Thanks to a background mmio region in Xen, it won't crash but
-it won't find any PCI devices.
+anything there. To avoid the domU to crash into a trap due to a memory
+access to an adresses that is unmapped, we need to disable the option
+trap-unmapped-accesses = <0>;
+
+DomU will find an empty PCI bus at boot.
 
 Once dom0 has booted, ran QEMU and QEMU has registered an IOREQ server we'll
 trigger a PCI bus rescan in domU to discover the newly added devices.
@@ -47,31 +50,32 @@ Date:   Thu Aug 22 08:14:48 2024 -0600
 
 ### QEMU
 
-This QEMU is based on upstream master + a few patches to disable buffered
-IOREQ's for ARM and enable PCI for ARM PVH.
+Using QEMU from upstream:
 
-https://github.com/edgarigl/qemu/tree/edgar/xenpvh-arm-pci
+```
+commit 9e601684dc24a521bb1d23215a63e5c6e79ea0bb (HEAD -> master, tag: v10.1.0-rc0, origin/staging, origin/master)
+Author: Stefan Hajnoczi <stefanha@redhat.com>
+Date:   Tue Jul 22 15:48:48 2025 -0400
+```
 
 ### Xen
 
-This Xen branch is based on upstream master at the time of writing with
-a few patches to enable virtio-pci. The most important ones:
+Using Xen from upstream:
+
 ```
-xen/arm: dom0less: Add a background PCI ECAM mmio region
-xen/arm: create dom0less virtio-pci DT node
-xen/arm: Add an ioreq-ready mmio region
+commit 2fd83ec8a7cf8303d25c1a6fddc7048da300633d (safety-base)
+Author: Alejandro Vallejo <alejandro.garciavallejo@amd.com>
+Date:   Tue Jul 22 13:59:50 2025 +0200
 ```
-https://github.com/edgarigl/xen/tree/edgar/xenpvh-arm-pci
 
 ## Linux
 
 I used a vanilla Linux kernel from this commit:
-```console
-$ git show
-commit 8d8d276ba2fb5f9ac4984f5c10ae60858090babc (HEAD -> master, linus/master)
-Merge: bc83b4d1f086 4e378158e5c1
+```
+commit 86aa721820952b793a12fc6e5a01734186c0c238 (HEAD -> master, linus/master)
+Merge: 9669b2499ea3 cc2d5b72b13b
 Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue Sep 10 09:05:20 2024 -0700
+Date:   Mon Jul 28 23:26:07 2025 -0700
 ```
 
 ## dom0less DTS setup
@@ -106,8 +110,14 @@ Here's en example overlay to go on top of your device-tree for Xen.
                         memory = <0x0 1048576>;
                         cpus = <1>;
                         vpl011;
-                        virtio-pci = "grants";
 
+                        // Xen enhanced creates the dt node to enlight guests
+                        // Needed for grants for example.
+                        xen,enhanced = "no-xenstore";
+
+                        // Disable traps for accesses to unmapped addresses
+                        trap-unmapped-accesses = <0>;
+                        
                         module@0 {
                                 compatible = "multiboot,kernel", "multiboot,module";
                                 bootargs = "rw root=/dev/ram earlyprintk=serial,ttyAMA0 console=hvc0 earlycon=xenboot";
@@ -117,10 +127,22 @@ Here's en example overlay to go on top of your device-tree for Xen.
                                 compatible = "multiboot,ramdisk", "multiboot,module";
                                 xen,uefi-binary = "xen-image-minimal-qemuarm64.rootfs.cpio.gz";
                         };
-                };
 
+                        // Device-tree fragment pt.dtb describing the virtio-pci nodes
+                        module@2 {
+                                compatible = "multiboot,device-tree", "multiboot,module";
+                                xen,uefi-binary = "pt.dtb";
+                        };
+                };
         };
 ```
+
+I've included my [dts](dts-virtio-pci/) files for reference.
+
+The pt.dts and pcie-host-bridge-irqx3.dtsi files describe the Virtio PCI controller to domU.
+The address ranges for the controller need to match the command-line in QEMU.
+You can edit pcie-host-bridge-irqx3.dtsi to select if virtio-pci should use grant or
+foreign mappings for DMA.
 
 ## Build images
 
@@ -136,7 +158,7 @@ You can build it on your own or follow the instructions in
 This assumes you've got a xen-image-minimal SDK to cross-compile for the target.
 
 ```console
-$ git clone -b edgar/xenpvh-arm-pci https://github.com/edgarigl/qemu
+$ git clone https://gitlab.com/qemu-project/qemu.git
 Cloning into 'qemu'...
 remote: Enumerating objects: 751684, done.
 remote: Counting objects: 100% (124/124), done.
@@ -282,6 +304,7 @@ sudo mount /dev/nbd0p1 boot-arm
 sudo cp Image boot-arm/
 sudo cp xen.efi boot-arm/
 sudo cp xen.dtb boot-arm/
+sudo cp pt.dtb boot-arm/
 sudo cp boot.scr boot-arm/
 
 # Cleanup
@@ -359,13 +382,14 @@ Loading Environment from Flash... *** Warning - bad CRC, using default environme
 ...
 
 ** Booting bootflow 'virtio-blk#33.bootdev.part_1' with script
-8728 bytes read in 2 ms (4.2 MiB/s)
-1245968 bytes read in 3 ms (396.1 MiB/s)
+9156 bytes read in 1 ms (8.7 MiB/s)
+4259872 bytes read in 8 ms (507.8 MiB/s)
 Booting /xen.efi
 Using modules provided by bootloader in FDT
-Xen 4.20-unstable (c/s Mon Sep 9 20:47:01 2024 +0200 git:aea400e10b) EFI loader
-Image: 0x000000017a94b000-0x000000017d3c1200
-xen-image-minimal-qemuarm64.rootfs.cpio.gz: 0x00000001745c3000-0x000000017a949cfe
+Xen 4.21-unstable (c/s Tue Jul 22 13:59:50 2025 +0200 git:2fd83ec8a7) EFI loader
+Image: 0x000000017a452000-0x000000017d0e3a00
+xen-image-minimal-genericarm64.rootfs.cpio.gz: 0x0000000171b97000-0x000000017a450973
+pt.dtb: 0x0000000171b95000-0x0000000171b955ab
 - UART enabled -
 - Boot CPU booting -
 - Current EL 0000000000000008 -
@@ -375,42 +399,40 @@ xen-image-minimal-qemuarm64.rootfs.cpio.gz: 0x00000001745c3000-0x000000017a949cf
 - Ready -
 (XEN) Checking for initrd in /chosen
 (XEN) Checking for "xen,static-mem" in domain node
-(XEN) Region: [0x0000017a94b000, 0x0000017d3c1200) overlapping with mod[2]: [0x0000017a94b000, 0x0000017d3c1200)
-(XEN) RAM: 0000000040000000 - 00000001745c2fff
-(XEN) RAM: 00000001745c3000 - 000000017a949fff
-(XEN) RAM: 000000017a94a000 - 000000017a94afff
-(XEN) RAM: 000000017a94b000 - 000000017d3c1fff
-(XEN) RAM: 000000017d3c2000 - 000000017d3c2fff
-(XEN) RAM: 000000017d3c3000 - 000000017d3c7fff
-(XEN) RAM: 000000017d3c8000 - 000000017d543fff
-(XEN) RAM: 000000017d544000 - 000000017d546fff
+(XEN) Region: [0x0000017a452000, 0x0000017d0e3a00) overlapping with mod[2]: [0x0000017a452000, 0x0000017d0e3a00)
+(XEN) RAM: 0000000040000000 - 000000017d546fff
 (XEN) RAM: 000000017d54d000 - 000000017d554fff
 (XEN) RAM: 000000017d556000 - 000000017d556fff
-(XEN) RAM: 000000017d579000 - 000000017d583fff
-(XEN) RAM: 000000017d584000 - 000000017e6a1fff
+(XEN) RAM: 000000017d579000 - 000000017e6a1fff
 (XEN) RAM: 000000017e6a3000 - 000000017f6bffff
 (XEN) RAM: 000000017f6d0000 - 000000017fffffff
 (XEN) 
-(XEN) MODULE[0]: 000000017d3c8000 - 000000017d544000 Xen         
-(XEN) MODULE[1]: 000000017d3c4000 - 000000017d3c8000 Device Tree 
-(XEN) MODULE[2]: 000000017a94b000 - 000000017d3c1200 Kernel      
-(XEN) MODULE[3]: 00000001745c3000 - 000000017a949cfe Ramdisk     
+(XEN) MODULE[0]: 000000017d0ea000 - 000000017d543fff Xen         
+(XEN) MODULE[1]: 000000017d0e6000 - 000000017d0e9fff Device Tree 
+(XEN) MODULE[2]: 000000017a452000 - 000000017d0e39ff Kernel      
+(XEN) MODULE[3]: 0000000171b97000 - 000000017a450972 Ramdisk     
+(XEN) MODULE[4]: 0000000171b95000 - 0000000171b955aa DTB         
 (XEN) 
-(XEN) CMDLINE[000000017a94b000]:domU1 rw root=/dev/ram console=hvc0 earlycon=xenboot
+(XEN) CMDLINE[000000017a452000]:domU1 rw root=/dev/ram console=hvc0 earlycon=xenboot
 (XEN) 
-(XEN) Command line: dom0_mem=1G bootscrub=0
+(XEN) Command line: dom0_mem=1G bootscrub=0 pci-passthrough=no pci-scan=no iommu=yes,verbose=yes,debug=yes,quarantine=yes
+(XEN) parameter "pci-passthrough" unknown!
+(XEN) parameter "pci-scan" unknown!
+(XEN) parameter "iommu" has invalid value "yes,verbose=yes,debug=yes,quarantine=yes", rc=-22!
 (XEN) Domain heap initialised
 (XEN) Booting using Device Tree
 (XEN) Platform: Generic System
 (XEN) Taking dtuart configuration from /chosen/stdout-path
 (XEN) Looking for dtuart at "/pl011@9000000", options ""
- __  __            _  _    ____   ___                     _        _     _
- \ \/ /___ _ __   | || |  |___ \ / _ \    _   _ _ __  ___| |_ __ _| |__ | | ___
-  \  // _ \ '_ \  | || |_   __) | | | |__| | | | '_ \/ __| __/ _` | '_ \| |/ _ \
-  /  \  __/ | | | |__   _| / __/| |_| |__| |_| | | | \__ \ || (_| | |_) | |  __/
- /_/\_\___|_| |_|    |_|(_)_____|\___/    \__,_|_| |_|___/\__\__,_|_.__/|_|\___|
+ __  __            _  _    ____  _                    _        _     _
+ \ \/ /___ _ __   | || |  |___ \/ |   _   _ _ __  ___| |_ __ _| |__ | | ___
+  \  // _ \ '_ \  | || |_   __) | |__| | | | '_ \/ __| __/ _` | '_ \| |/ _ \
+  /  \  __/ | | | |__   _| / __/| |__| |_| | | | \__ \ || (_| | |_) | |  __/
+ /_/\_\___|_| |_|    |_|(_)_____|_|   \__,_|_| |_|___/\__\__,_|_.__/|_|\___|
 
-(XEN) Xen version 4.20-unstable (edgar@) (gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0) debug=y Tue Sep 10 20:58:19 CEST 2024
+(XEN) Xen version 4.21-unstable (edgar@) (gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0) debug=y ubsan=y Tue Jul 29 15:05:09 CEST 2025
+(XEN) Latest ChangeSet: Tue Jul 22 13:59:50 2025 +0200 git:2fd83ec8a7
+(XEN) build-id: 85e0a84f6a8926b92444a83bd91c0ffa3593db17
 ```
 
 You shold see both guests boot into login prompts.
@@ -439,7 +461,11 @@ $ qemu-system-aarch64 \
     -smp 1,maxcpus=1 \
     -m 1024M \
     -netdev user,id=n0 \
-    -device virtio-net,netdev=n0,romfile=""
+    -device virtio-net,netdev=n0,romfile="" \
+    -global virtio-pci.disable-modern=off \
+    -global virtio-pci.disable-legacy=on \
+    -global virtio-net-device.iommu_platform=on \
+
 ```
 
 Now, in domU, trig a PCI rescan:
@@ -485,4 +511,31 @@ $ ping -i 0.1 10.0.2.2
 (XEN) 64 bytes from 10.0.2.2: seq=1 ttl=255 time=17.952 ms
 
 ```
+
+
+# References to spec
+
+PCI express base specification:
+7.5.1.1.1 Vendor ID Register (Offset 00h)
+The Vendor ID register is HwInit and the value in this register identifies the manufacturer of the Function. In keeping with
+PCI-SIG procedures, valid vendor identifiers must be allocated by the PCI-SIG to ensure uniqueness. Each vendor must
+have at least one Vendor ID. It is recommended that software read the Vendor ID register to determine if a Function is
+present, where a value of FFFFh indicates that no Function is present.
+
+PCI Firmware Specification:
+3.5 Device State at Firmware/Operating System Handoff
+Page 34:
+The operating system is required to configure PCI subsystems:
+ During hotplug
+ For devices that take too long to come out of reset
+ PCI-to-PCI bridges that are at levels below what firmware is designed to configure
+
+Page 36:
+Note: The operating system does not have to walk all buses during boot. The kernel can
+automatically configure devices on request; i.e., an event can cause a scan of I/O on demand.
+
+FPGA's can be programmed at runtime and appear on the ECAM bus silently.
+An PCI rescan needs to be triggered for the OS to discover the device:
+Intel FPGAs:
+https://www.intel.com/content/www/us/en/docs/programmable/683190/1-3-1/how-to-rescan-bus-and-re-enable-aer.html
 

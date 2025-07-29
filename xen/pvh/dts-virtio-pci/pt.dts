@@ -1,0 +1,23 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	gic: gic {
+		/* Dummy gic node, only used for phandle reference.
+		* Xen will populate real vGIC node. */
+		#interrupt-cells = <3>;
+		interrupt-controller;
+	};
+
+	passthrough {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+/include/ "pcie-host-bridge-irqx3.dtsi"
+	};
+};
+
