@@ -1,6 +1,10 @@
-# Sapphire/VEK280 virtio-msg demo for CES
+# Sapphire IPC-FP6 / VEK280 virtio-msg demo for EW
 
 ## Running with pre-built binaries
+
+You need a Sapphire IPC-FP6 and a Xilinx VEK280.
+The Xilinx VEK280 should be connected to one of the PCIe slots
+of the FP6 board. The VEK280 should be configured to boot from JTAG.
 
 The demo requires booting things in the right order to work.
 The steps are:
@@ -13,6 +17,9 @@ The steps are:
 6. The virtio-net network across the boards should now work.
 
 Now we'll describe the steps on the board connected to xsjjaewookb50.
+
+The demo images for VEK280 can be found here:
+xsjjaewookb50:/scratch/demo/virtio-msg-ces-demo/virtio-msg-demo-v9.tgz
 
 ### Package
 
